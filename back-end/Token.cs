@@ -23,7 +23,7 @@ public class Token
             var securityKey = new SymmetricSecurityKey(keyBytes);
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha512);
             var claims = new[] {
-                new Claim("UserName", username?? "")
+                new Claim("Username", username?? "")
             };
 
             var token = new JwtSecurityToken(
