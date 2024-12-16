@@ -2,7 +2,6 @@
     <div class="text-center my-3">
         <div class="mb-2"><b>DANH SÁCH THỂ LOẠI</b></div>
         <v-btn elevation="0" color="success" @click="openDialogUpdateTheLoai(null)">
-            <v-icon class="mr-2">mdi-plus-circle</v-icon>
             Thêm mới
         </v-btn>
     </div>
@@ -21,17 +20,17 @@
             </tr>
         </thead>
         <tbody>
-            <tr v-for="item in dataTheLoai" :key="item.maTL">
-                <td>{{ item.MaTL }}</td>
+            <tr v-for="item in dataTheLoai" :key="item.MaTheLoai">
+                <td>{{ item.MaTheLoai }}</td>
                 <td>{{ item.TenTheLoai }}</td>
-                <td><v-icon @click="openDialogUpdateTheLoai(item)">mdi-pencil</v-icon></td>
-                <td><v-icon @click="showDialogDeleteConfirm(item)">mdi-delete</v-icon></td>
+                <td><v-icon style="background-color: greenyellow;" @click="openDialogUpdateTheLoai(item)">mdi-pencil</v-icon></td>
+                <td><v-icon style="background-color: red;" @click="showDialogDeleteConfirm(item)">mdi-delete</v-icon></td>
             </tr>
         </tbody>
     </v-table>
 
     <!-- Hộp thoại Thêm, sửa dữ liệu -->
-    <v-dialog width="400" scrollable v-model="showDialogUpdate">
+    <v-dialog width="50%" scrollable v-model="showDialogUpdate">
         <template v-slot:default="{ isActive }">
             <v-card prepend-icon="mdi-earth" :title="dialogUpdateTitle">
                 <v-divider class="mb-3"></v-divider>
@@ -78,7 +77,7 @@ export default {
         showDialogDelete: false,
         dialogUpdateTitle: "",
         objTheLoai: {
-            MaTL: 0,
+            MaTheLoai: 0,
             TenTheLoai: ""
         },
         errorMessage: "",
@@ -90,7 +89,7 @@ export default {
     methods: {
         // Lấy danh sách thể loại
         getTheLoai() {
-            axios.get('/TheLoai', {})
+            axios.get('/Theloai', {})
                 .then((response) => { this.dataTheLoai = [...response.data.data] })
                 .catch((error) => { console.log(error); });
         },
@@ -100,12 +99,12 @@ export default {
             this.showDialogUpdate = true;
             if (obj == null) {
                 this.dialogUpdateTitle = "Thêm mới thể loại"
-                this.objTheLoai.MaTL = 0;
+                this.objTheLoai.MaTheLoai = 0;
                 this.objTheLoai.TenTheLoai = "";
             }
             else {
                 this.dialogUpdateTitle = "Chỉnh sửa thông tin thể loại"
-                this.objTheLoai.MaTL = obj.MaTL;
+                this.objTheLoai.MaTheLoai = obj.MaTheLoai;
                 this.objTheLoai.TenTheLoai = obj.TenTheLoai;
             }
         },
@@ -114,11 +113,11 @@ export default {
         saveUpdateAction() {
             if (this.objTheLoai.TenTheLoai == "")
                 return;
-
-            axios.post('/TheLoai/update',
+            if (this.objTheLoai.MaTheLoai != 0){
+                axios.put('/Theloai/update',
                 {
-                    MaTL: this.objTheLoai.MaTL,
-                    TenTheLoai: this.objTheLoai.TenTheLoai
+                    MaTheLoai: this.objTheLoai.MaTheLoai,
+                    TenTheLoai: this.objTheLoai.TenTheLoai,
                 })
                 .then((response) => {
                     this.showDialogUpdate = false;
@@ -131,24 +130,38 @@ export default {
                     this.colorMessage = "red";
                     this.showDialogUpdate = false;
                 });
+            }else{
+                axios.post('/Theloai',
+                {
+                    MaTheLoai: this.objTheLoai.MaTheLoai,
+                    TenTheLoai: this.objTheLoai.TenTheLoai,
+                })
+                .then((response) => {
+                    this.showDialogUpdate = false;
+                    this.getTheLoai();
+                    this.errorMessage = response.data.message;
+                    this.colorMessage = "blue";
+                })
+                .catch((error) => {
+                    this.errorMessage = error.response.data.message;
+                    this.colorMessage = "red";
+                    this.showDialogUpdate = false;
+                });
+            }
         },
 
         // Hiển thị hộp thoại Confirm trước khi xoá
         showDialogDeleteConfirm(obj) {
-            console.log("truoc khi mo hop thoai",this.objTheLoai)
-            // Lưu giữ thông tin mã thể loại cần xoá
-            this.objTheLoai.MaTL = obj.MaTL;
+            this.objTheLoai.MaTheLoai = obj.MaTheLoai;
             this.objTheLoai.TenTheLoai = obj.TenTheLoai;
-           
             this.showDialogDelete = true;
-             console.log("sau khi mo hop thoai",this.objTheLoai)
         },
 
         // Xoá dữ liệu
         deleteAction() {
-            axios.post('/TheLoai/delete',
+            axios.delete(`/Theloai/${this.objTheLoai.MaTheLoai}`,
                 {
-                    MaTL: this.objTheLoai.MaTL
+                    MaTheLoai: this.objTheLoai.MaTheLoai
                 })
                 .then((response) => {
                     this.getTheLoai();

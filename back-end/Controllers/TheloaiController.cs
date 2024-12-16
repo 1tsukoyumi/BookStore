@@ -10,19 +10,19 @@ namespace back_end.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class TacgiaController : ControllerBase
+public class TheLoaiController : ControllerBase
 {
     private readonly IConfiguration _configuration;
     private readonly Token _jwt;
 
-    public TacgiaController(IConfiguration configuration)
+    public TheLoaiController(IConfiguration configuration)
     {
         _configuration = configuration;
         _jwt = new Token();
     }
 
     [HttpGet]
-    public async Task<ActionResult> GetAllTacGia([FromQuery] int? MaTacGia )
+    public async Task<ActionResult> GetAllTheLoai([FromQuery] int? MaTheLoai )
     {
         try
         {
@@ -56,14 +56,14 @@ public class TacgiaController : ControllerBase
                 command.CommandType = CommandType.StoredProcedure;
 
                 // Nếu người dùng có truyền mã sách
-                if (MaTacGia.HasValue)
+                if (MaTheLoai.HasValue)
                 {
-                    command.CommandText = "spGetTacGiaByID";
-                    command.Parameters.AddWithValue("@MaTacGia", MaTacGia);
+                    command.CommandText = "spGetTheLoaiByID";
+                    command.Parameters.AddWithValue("@MaTheLoai", MaTheLoai);
                 }
                 else
                 {
-                    command.CommandText = "spGetAllTacGia";
+                    command.CommandText = "spGetAllTheLoai";
                 }
 
                 SqlDataAdapter da = new(command);
@@ -90,8 +90,8 @@ public class TacgiaController : ControllerBase
         }
     }
 
-    [HttpGet("{MaTacGia?}")]
-    public async Task<ActionResult> GetTacGiaByID(int? MaTacGia)
+    [HttpGet("{MaTheLoai?}")]
+    public async Task<ActionResult> GetTheLoaiByID(int? MaTheLoai)
     {
         try
         {
@@ -125,10 +125,10 @@ public class TacgiaController : ControllerBase
                 command.CommandType = CommandType.StoredProcedure;
 
                 // Nếu có truyền vào mã sách
-                if (MaTacGia.HasValue)
+                if (MaTheLoai.HasValue)
                 {
-                    command.CommandText = "spGetTacGiaByID";
-                    command.Parameters.AddWithValue("@MaTacGia", MaTacGia);
+                    command.CommandText = "spGetTheLoaiByID";
+                    command.Parameters.AddWithValue("@MaTheLoai", MaTheLoai);
                 }
 
                 SqlDataAdapter da = new(command);
@@ -156,7 +156,7 @@ public class TacgiaController : ControllerBase
     }
 
 [HttpPost]
-    public async Task<ActionResult> CreateTacGia()
+    public async Task<ActionResult> CreateTheLoai()
     {
         try
         {
@@ -188,16 +188,15 @@ public class TacgiaController : ControllerBase
                 using SqlCommand command = new();
                 command.Connection = connection;
                 command.CommandType = CommandType.StoredProcedure;
-                command.CommandText = "spCreateTacGia";
+                command.CommandText = "spCreateTheLoai";
 
-                // Lấy thông tin MaSach và TenSach trong Body
                 using (var reader = new StreamReader(Request.Body))
                 {
                     var requestBody = await reader.ReadToEndAsync();
                     var jsonObject = JObject.Parse(requestBody);
 
                     // Thêm các tham số cho thủ tục
-                    command.Parameters.AddWithValue("@TenTacGia", jsonObject["TenTacGia"]?.Value<string>());
+                    command.Parameters.AddWithValue("@TenTheLoai", jsonObject["TenTheLoai"]?.Value<string>());
                 }
 
                 SqlDataAdapter da = new(command);
@@ -225,7 +224,7 @@ public class TacgiaController : ControllerBase
         }
     }
     [HttpPut("update")]
-    public async Task<ActionResult> UpdateTacGia()
+    public async Task<ActionResult> UpdateTheLoai()
     {
         try
         {
@@ -257,7 +256,7 @@ public class TacgiaController : ControllerBase
                 using SqlCommand command = new();
                 command.Connection = connection;
                 command.CommandType = CommandType.StoredProcedure;
-                command.CommandText = "spUpdateTacGia";
+                command.CommandText = "spUpdateTheLoai";
 
                 using (var reader = new StreamReader(Request.Body))
                 {
@@ -265,8 +264,8 @@ public class TacgiaController : ControllerBase
                     var jsonObject = JObject.Parse(requestBody);
 
                     // Thêm các tham số cho thủ tục
-                    command.Parameters.AddWithValue("@MaTacGia", jsonObject["MaTacGia"]?.Value<int>());
-                    command.Parameters.AddWithValue("@TenTacGia", jsonObject["TenTacGia"]?.Value<string>());
+                    command.Parameters.AddWithValue("@MaTheLoai", jsonObject["MaTheLoai"]?.Value<int>());
+                    command.Parameters.AddWithValue("@TenTheLoai", jsonObject["TenTheLoai"]?.Value<string>());
                 }
 
                 SqlDataAdapter da = new(command);
@@ -295,8 +294,8 @@ public class TacgiaController : ControllerBase
     }
 
 
-    [HttpDelete("{MaTacGia}")]
-    public async Task<ActionResult> DeleteTacGia(int MaTacGia)
+    [HttpDelete("{MaTheLoai}")]
+    public async Task<ActionResult> DeleteTheLoai(int MaTheLoai)
     {
         try
         {
@@ -328,10 +327,10 @@ public class TacgiaController : ControllerBase
                 using SqlCommand command = new();
                 command.Connection = connection;
                 command.CommandType = CommandType.StoredProcedure;
-                command.CommandText = "spAnTacGia";
+                command.CommandText = "spAnTheLoai";
 
-                // Lấy thông tin MaSach và TenSach trong Body
-                command.Parameters.AddWithValue("@MaTacGia", MaTacGia);
+                // Lấy thông tin TheLoai và TenTheLoai trong Body
+                command.Parameters.AddWithValue("@MaTheLoai", MaTheLoai);
 
                 SqlDataAdapter da = new(command);
                 DataTable dt = new();

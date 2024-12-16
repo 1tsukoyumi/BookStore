@@ -2,7 +2,6 @@
     <div class="text-center my-3">
         <div class="mb-2"><b>DANH SÁCH TÁC GIẢ</b></div>
         <v-btn elevation="0" color="success" @click="openDialogUpdateTacGia(null)">
-            <v-icon class="mr-2">mdi-plus-circle</v-icon>
             Thêm mới
         </v-btn>
     </div>
@@ -16,33 +15,28 @@
             <tr>
                 <th> Mã TG </th>
                 <th class="text-left"> Tên tác giả </th>
-                <th class="text-left"> Mô tả </th>
                 <th> Sửa </th>
                 <th> Xoá </th>
             </tr>
         </thead>
         <tbody>
-            <tr v-for="item in dataTacGia" :key="item.maTG">
-                <td>{{ item.MaTG }}</td>
+            <tr v-for="item in dataTacGia" :key="item.MaTacGia">
+                <td>{{ item.MaTacGia }}</td>
                 <td>{{ item.TenTacGia }}</td>
-                <td>{{ item.MoTa }}</td>
-                <td><v-icon @click="openDialogUpdateTacGia(item)">mdi-pencil</v-icon></td>
-                <td><v-icon @click="showDialogDeleteConfirm(item)">mdi-delete</v-icon></td>
+                <td><v-icon style="background-color: greenyellow;" @click="openDialogUpdateTacGia(item)">mdi-pencil</v-icon></td>
+                <td><v-icon style="background-color: red;" @click="showDialogDeleteConfirm(item)">mdi-delete</v-icon></td>
             </tr>
         </tbody>
     </v-table>
 
     <!-- Hộp thoại Thêm, sửa dữ liệu -->
-    <v-dialog width="400" scrollable v-model="showDialogUpdate">
+    <v-dialog width="50%" scrollable v-model="showDialogUpdate">
         <template v-slot:default="{ isActive }">
             <v-card prepend-icon="mdi-earth" :title="dialogUpdateTitle">
                 <v-divider class="mb-3"></v-divider>
 
                 <v-card-text class="px-4">
                     <v-text-field v-model="objTacGia.TenTacGia" label="Tên tác giả" variant="outlined"></v-text-field>
-                </v-card-text>
-                <v-card-text class="px-4">
-                    <v-text-field v-model="objTacGia.MoTa" label="Mô tả" variant="outlined"></v-text-field>
                 </v-card-text>
 
                 <v-divider></v-divider>
@@ -83,9 +77,8 @@ export default {
         showDialogDelete: false,
         dialogUpdateTiTGe: "",
         objTacGia: {
-            MaTG: 0,
-            TenTacGia: "",
-            MoTa: ""
+            MaTacGia: 0,
+            TenTacGia: ""
         },
         errorMessage: "",
         colorMessage: "blue"
@@ -105,16 +98,14 @@ export default {
         openDialogUpdateTacGia(obj) {
             this.showDialogUpdate = true;
             if (obj == null) {
-                this.dialogUpdateTiTGe = "Thêm mới tác giả"
-                this.objTacGia.MaTG = 0;
+                this.dialogUpdateTitle = "Thêm mới tác giả"
+                this.objTacGia.MaTacGia = 0;
                 this.objTacGia.TenTacGia = "";
-                this.objTacGia.MoTa = "";
             }
             else {
-                this.dialogUpdateTiTGe = "Chỉnh sửa thông tin tác giả"
-                this.objTacGia.MaTG = obj.MaTG;
+                this.dialogUpdateTitle = "Chỉnh sửa thông tin tác giả"
+                this.objTacGia.MaTacGia = obj.MaTacGia;
                 this.objTacGia.TenTacGia = obj.TenTacGia;
-                this.objTacGia.MoTa = obj.MoTa;
             }
         },
 
@@ -122,12 +113,11 @@ export default {
         saveUpdateAction() {
             if (this.objTacGia.TenTacGia == "")
                 return;
-
-            axios.post('/TacGia/update',
+            if (this.objTacGia.MaTacGia != 0){
+                axios.put('/Tacgia/update',
                 {
-                    MaTG: this.objTacGia.MaTG,
+                    MaTacGia: this.objTacGia.MaTacGia,
                     TenTacGia: this.objTacGia.TenTacGia,
-                    MoTa: this.objTacGia.MoTa
                 })
                 .then((response) => {
                     this.showDialogUpdate = false;
@@ -140,25 +130,38 @@ export default {
                     this.colorMessage = "red";
                     this.showDialogUpdate = false;
                 });
+            }else{
+                axios.post('/TacGia',
+                {
+                    MaTacGia: this.objTacGia.MaTacGia,
+                    TenTacGia: this.objTacGia.TenTacGia,
+                })
+                .then((response) => {
+                    this.showDialogUpdate = false;
+                    this.getTacGia();
+                    this.errorMessage = response.data.message;
+                    this.colorMessage = "blue";
+                })
+                .catch((error) => {
+                    this.errorMessage = error.response.data.message;
+                    this.colorMessage = "red";
+                    this.showDialogUpdate = false;
+                });
+            }
         },
 
         // Hiển thị hộp thoại Confirm trước khi xoá
         showDialogDeleteConfirm(obj) {
-            console.log("truoc khi mo hop thoai",this.objTacGia)
-            // Lưu giữ thông tin mã tác giả cần xoá
-            this.objTacGia.MaTG = obj.MaTG;
+            this.objTacGia.MaTacGia = obj.MaTacGia;
             this.objTacGia.TenTacGia = obj.TenTacGia;
-            this.objTacGia.MoTa = obj.MoTa;
-           
             this.showDialogDelete = true;
-             console.log("sau khi mo hop thoai",this.objTacGia)
         },
 
         // Xoá dữ liệu
         deleteAction() {
-            axios.post('/TacGia/delete',
+            axios.delete(`/Tacgia/${this.objTacGia.MaTacGia}`,
                 {
-                    MaTG: this.objTacGia.MaTG
+                    MaTacGia: this.objTacGia.MaTacGia
                 })
                 .then((response) => {
                     this.getTacGia();

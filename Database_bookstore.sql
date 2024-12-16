@@ -13,7 +13,7 @@ Create table Users (
 	Role nvarchar(20) not null default 'User',
 	CreatedDate datetime not null default getdate(),
 	LastLogin datetime null,
-	UserStatus bit null --trạng thái
+	UserStatus bit default 1 --trạng thái
 );
 Go
 
@@ -22,16 +22,16 @@ create table TacGia (
 	MaTacGia int identity(1,1) primary key,
 	TenTacGia nvarchar(200) not null,
 	CreatedDate datetime not null default getdate(),
-	IsActive bit null
+	IsActive bit default 1
 );
 go
 
 --bảng danh mục
 Create table Theloai (
-	Matheloai int identity(1,1) primary key,
-	Tentheloai nvarchar(100) not null,
+	MaTheLoai int identity(1,1) primary key,
+	TenTheLoai nvarchar(100) not null,
 	CreatedDate datetime not null default getdate(),
-	IsActive bit null
+	IsActive bit default 1
 );
 Go
 
@@ -130,13 +130,12 @@ EXEC sys.sp_addextendedproperty
 go
 
 --thủ tục thêm sách mới
-Create proc dbo.spThemSach
+Create proc dbo.spCreateSach
 	@TenSach nvarchar(200),
 	@MaTacGia int,
 	@MaTheLoai int,
 	@GiaBan int,
 	@SoLuongTon int,
-	@MoTa nvarchar(max),
 	@AnhBia nvarchar(200) 
 as begin try
 	if exists (
@@ -147,8 +146,8 @@ as begin try
         SELECT N'Sách này đã tồn tại trong hệ thống.' AS errMsg;
         RETURN;
     END
-	INSERT INTO Sach (TenSach, MaTacGia, MaTheLoai, GiaBan, SoLuongTon, MoTa, AnhBia, CreatedDate, IsActive)
-    VALUES (@TenSach, @MaTacGia, @MaTheLoai, @GiaBan, @SoLuongTon, @MoTa, @AnhBia, GETDATE(), 1);
+	INSERT INTO Sach (TenSach, MaTacGia, MaTheLoai, GiaBan, SoLuongTon, AnhBia, CreatedDate, IsActive)
+    VALUES (@TenSach, @MaTacGia, @MaTheLoai, @GiaBan, @SoLuongTon, @AnhBia, GETDATE(), 1);
 	SELECT N'Sách đã được thêm thành công.' AS errMsg;
 end try
 Begin catch
@@ -158,14 +157,13 @@ END CATCH;
 GO
 
 --thủ tục cập nhật sách
-Create proc dbo.spCapNhatSach
+Create proc dbo.spUpdateSach
 	@MaSach int,
 	@TenSach nvarchar(200),
 	@MaTacGia int,
 	@MaTheLoai int,
 	@GiaBan int,
 	@SoLuongTon int,
-	@MoTa nvarchar(max),
 	@AnhBia nvarchar(200) 
 as begin try
 	if not exists (
@@ -182,7 +180,6 @@ as begin try
 		MaTheLoai = @MaTheLoai,
 		GiaBan = @GiaBan,
 		SoLuongTon = @SoLuongTon,
-		MoTa = @MoTa,
 		AnhBia = @AnhBia
 	where MaSach = @MaSach;
 	Print 'Sách đã được cập nhật thành công.';
@@ -246,12 +243,14 @@ END CATCH;
 GO
 
 --thủ tục lấy sách bằng mã
-CREATE proc dbo.spLaySachByMaSach
+CREATE proc dbo.spGetSachByID
 @MaSach int
 AS
 	select s.MaSach,
             s.TenSach ,
             t.TenTacGia ,
+			s.MaTacGia,
+			s.MaTheLoai,
             tl.TenTheLoai ,
             s.GiaBan ,
             s.SoLuongTon ,
@@ -266,10 +265,12 @@ AS
 go
 
 --thủ tục hiện sách ra màn hình
-Create proc dbo.spLaySach
+Create proc dbo.spGetAllSach
 As begin try
 	select s.MaSach,
             s.TenSach ,
+			s.MaTacGia,
+			s.MaTheLoai,
             t.TenTacGia ,
             tl.TenTheLoai ,
             s.GiaBan ,
@@ -296,6 +297,195 @@ go
 insert into Users (Username, PasswordHash, Role, UserStatus) 
 	values ('admin', PWDENCRYPT('admin'), 'Admin', 1)
 go
+
+CREATE PROC dbo.spGetAllTacGia
+AS BEGIN TRY
+    SELECT MaTacGia, TenTacGia, CreatedDate, IsActive
+    FROM TacGia
+    WHERE IsActive = 1;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+GO
+
+CREATE PROC dbo.spGetTacGiaByID
+    @MaTacGia INT
+AS BEGIN TRY
+    SELECT MaTacGia, TenTacGia, CreatedDate, IsActive
+    FROM TacGia
+    WHERE MaTacGia = @MaTacGia AND IsActive = 1;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+GO
+
+CREATE PROC dbo.spCreateTacGia
+    @TenTacGia NVARCHAR(200)
+AS BEGIN TRY
+    -- Kiểm tra nếu tác giả đã tồn tại
+    IF EXISTS (SELECT 1 FROM TacGia WHERE TenTacGia = @TenTacGia AND IsActive = 1)
+    BEGIN
+        SELECT N'Tác giả đã tồn tại.' AS errMsg;
+        RETURN;
+    END
+
+    -- Thêm mới tác giả
+    INSERT INTO TacGia (TenTacGia, CreatedDate, IsActive)
+    VALUES (@TenTacGia, GETDATE(), 1);
+
+    SELECT N'Tác giả đã được thêm thành công.' AS errMsg;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+GO
+
+CREATE PROC dbo.spUpdateTacGia
+    @MaTacGia INT,
+    @TenTacGia NVARCHAR(200)
+AS BEGIN TRY
+    -- Kiểm tra nếu tác giả tồn tại
+    IF NOT EXISTS (SELECT 1 FROM TacGia WHERE MaTacGia = @MaTacGia AND IsActive = 1)
+    BEGIN
+        SELECT N'Tác giả không tồn tại hoặc đã bị xóa.' AS errMsg;
+        RETURN;
+    END
+
+    -- Cập nhật thông tin tác giả
+    UPDATE TacGia
+    SET TenTacGia = @TenTacGia
+    WHERE MaTacGia = @MaTacGia;
+
+    SELECT N'Tác giả đã được cập nhật thành công.' AS errMsg;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+GO
+
+CREATE PROC dbo.spAnTacGia
+    @MaTacGia INT
+AS BEGIN TRY
+    -- Kiểm tra nếu tác giả tồn tại
+    IF NOT EXISTS (SELECT 1 FROM TacGia WHERE MaTacGia = @MaTacGia AND IsActive = 1)
+    BEGIN
+        SELECT N'Tác giả không tồn tại hoặc đã bị xóa.' AS errMsg;
+        RETURN;
+    END
+
+    -- Xóa mềm tác giả
+    UPDATE TacGia
+    SET IsActive = 0
+    WHERE MaTacGia = @MaTacGia;
+
+    SELECT N'Tác giả đã được ẩn thành công.' AS errMsg;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+GO
+
+CREATE PROC dbo.spGetAllTheLoai
+AS BEGIN TRY
+    SELECT MaTheLoai, TenTheLoai, CreatedDate, IsActive
+    FROM TheLoai
+    WHERE IsActive = 1;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+GO
+
+CREATE PROC dbo.spGetTheLoaiByID
+    @MaTheLoai INT
+AS BEGIN TRY
+    SELECT MaTheLoai, TenTheLoai, CreatedDate, IsActive
+    FROM TheLoai
+    WHERE MaTheLoai = @MaTheLoai AND IsActive = 1;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+GO
+
+CREATE PROC dbo.spCreateTheLoai
+    @TenTheLoai NVARCHAR(100)
+AS BEGIN TRY
+    -- Kiểm tra nếu thể loại đã tồn tại
+    IF EXISTS (SELECT 1 FROM TheLoai WHERE TenTheLoai = @TenTheLoai AND IsActive = 1)
+    BEGIN
+        SELECT N'Thể loại đã tồn tại.' AS errMsg;
+        RETURN;
+    END
+
+    -- Thêm mới thể loại
+    INSERT INTO TheLoai (TenTheLoai, CreatedDate, IsActive)
+    VALUES (@TenTheLoai, GETDATE(), 1);
+
+    SELECT N'Thể loại đã được thêm thành công.' AS errMsg;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+GO
+
+CREATE PROC dbo.spUpdateTheLoai
+    @MaTheLoai INT,
+    @TenTheLoai NVARCHAR(100)
+AS BEGIN TRY
+    -- Kiểm tra nếu thể loại tồn tại
+    IF NOT EXISTS (SELECT 1 FROM TheLoai WHERE MaTheLoai = @MaTheLoai AND IsActive = 1)
+    BEGIN
+        SELECT N'Thể loại không tồn tại hoặc đã bị xóa.' AS errMsg;
+        RETURN;
+    END
+
+    -- Cập nhật thông tin thể loại
+    UPDATE TheLoai
+    SET TenTheLoai = @TenTheLoai
+    WHERE MaTheLoai = @MaTheLoai;
+
+    SELECT N'Thể loại đã được cập nhật thành công.' AS errMsg;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+GO
+
+CREATE PROC dbo.spAnTheLoai
+    @MaTheLoai INT
+AS BEGIN TRY
+    -- Kiểm tra nếu thể loại tồn tại
+    IF NOT EXISTS (SELECT 1 FROM TheLoai WHERE MaTheLoai = @MaTheLoai AND IsActive = 1)
+    BEGIN
+        SELECT N'Thể loại không tồn tại hoặc đã bị xóa.' AS errMsg;
+        RETURN;
+    END
+
+    -- Xóa mềm thể loại
+    UPDATE TheLoai
+    SET IsActive = 0
+    WHERE MaTheLoai = @MaTheLoai;
+
+    SELECT N'Thể loại đã được ẩn thành công.' AS errMsg;
+END TRY
+BEGIN CATCH
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
+END CATCH;
+GO
+
 
 --thêm tác giả
 INSERT INTO TacGia (TenTacGia)

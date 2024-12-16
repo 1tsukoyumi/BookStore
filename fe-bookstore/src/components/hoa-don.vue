@@ -2,7 +2,6 @@
     <div class="text-center my-3">
         <div class="mb-2"><b>DANH SÁCH HÓA ĐƠN</b></div>
         <v-btn elevation="0" color="success" @click="openDialogUpdateHoaDon(null)">
-            <v-icon class="mr-2">mdi-plus-circle</v-icon>
             Thêm mới
         </v-btn>
     </div>
@@ -135,13 +134,10 @@ export default {
 
         // Hiển thị hộp thoại Confirm trước khi xoá
         showDialogDeleteConfirm(obj) {
-            console.log("truoc khi mo hop thoai",this.objHoaDon)
-            // Lưu giữ thông tin mã hóa đơn cần xoá
             this.objHoaDon.MaHD = obj.MaHD;
             this.objHoaDon.TenHoaDon = obj.TenHoaDon;
            
             this.showDialogDelete = true;
-             console.log("sau khi mo hop thoai",this.objHoaDon)
         },
 
         // Xoá dữ liệu
