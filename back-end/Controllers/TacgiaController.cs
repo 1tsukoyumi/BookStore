@@ -155,7 +155,7 @@ public class TacgiaController : ControllerBase
         }
     }
 
-    [HttpPost]
+[HttpPost]
     public async Task<ActionResult> CreateTacGia()
     {
         try
@@ -225,7 +225,7 @@ public class TacgiaController : ControllerBase
             return BadRequest(new { message = ex.Message.ToString() });
         }
     }
-    [HttpPut("{MaTacGia?}")]
+    [HttpPut("/update/{MaTacGia?}")]
     public async Task<ActionResult> UpdateTacGia(int? MaTacGia)
     {
         try
@@ -296,7 +296,7 @@ public class TacgiaController : ControllerBase
     }
 
 
-    [HttpPost("delete")]
+    [HttpDelete("delete")]
     public async Task<ActionResult> DeleteTacGia()
     {
         try

@@ -20,14 +20,18 @@ Go
 --bảng tác giả
 create table TacGia (
 	MaTacGia int identity(1,1) primary key,
-	TenTacGia nvarchar(200) not null
+	TenTacGia nvarchar(200) not null,
+	CreatedDate datetime not null default getdate(),
+	IsActive bit null
 );
 go
 
 --bảng danh mục
 Create table Theloai (
 	Matheloai int identity(1,1) primary key,
-	Tentheloai nvarchar(100) not null
+	Tentheloai nvarchar(100) not null,
+	CreatedDate datetime not null default getdate(),
+	IsActive bit null
 );
 Go
 
@@ -140,11 +144,12 @@ as begin try
 		Where TenSach = @TenSach
 	)
 	BEGIN
-        RAISERROR (N'Sách này đã tồn tại trong hệ thống.', 16, 1);
+        SELECT N'Sách này đã tồn tại trong hệ thống.' AS errMsg;
         RETURN;
     END
-	INSERT INTO Sach VALUES (@TenSach, @MaTacGia, @MaTheLoai, @GiaBan, @SoLuongTon, @MoTa, @AnhBia, GETDATE(), 1);
-	PRINT 'Sách đã được thêm thành công.';
+	INSERT INTO Sach (TenSach, MaTacGia, MaTheLoai, GiaBan, SoLuongTon, MoTa, AnhBia, CreatedDate, IsActive)
+    VALUES (@TenSach, @MaTacGia, @MaTheLoai, @GiaBan, @SoLuongTon, @MoTa, @AnhBia, GETDATE(), 1);
+	SELECT N'Sách đã được thêm thành công.' AS errMsg;
 end try
 Begin catch
 	DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
@@ -168,12 +173,20 @@ as begin try
 	)
 	Begin
 		raiserror (N'Sách không tồn tại hoặc đã bị xóa.', 16, 1);
+		SELECT N'Sách không tồn tại hoặc đã bị xóa.' AS errMsg;
         RETURN;
 	end
 	Update Sach
-	Set GiaBan = @GiaBan
+	Set TenSach = @TenSach,
+		MaTacGia = @MaTacGia,
+		MaTheLoai = @MaTheLoai,
+		GiaBan = @GiaBan,
+		SoLuongTon = @SoLuongTon,
+		MoTa = @MoTa,
+		AnhBia = @AnhBia
 	where MaSach = @MaSach;
-	Print 'Giá sách đã được cập nhật thành công.';
+	Print 'Sách đã được cập nhật thành công.';
+	SELECT N'Sách đã được cập nhật thành công.' AS errMsg;
 end try
 Begin catch
 	DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
@@ -190,12 +203,14 @@ as begin try
 	)
 	Begin
 		raiserror (N'Sách không tồn tại hoặc đã bị xóa.', 16, 1);
+		SELECT N'Sách không tồn tại hoặc đã bị xóa..' AS errMsg;
 		Return;
 	end
 	Update Sach
 	Set IsActive = 0
 	Where MaSach = @MaSach;
 	Print 'Sách đã được xoá thành công.';
+	SELECT N'Sách đã được xoá thành công.' AS errMsg;
 end try
 Begin catch
 	DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
@@ -214,6 +229,7 @@ AS BEGIN TRY
     )
     BEGIN
         RAISERROR (N'Sách không tồn tại hoặc chưa bị xóa.', 16, 1);
+		SELECT N'Sách không tồn tại hoặc chưa bị xóa.' AS errMsg;
         RETURN;
     END
     UPDATE Sach
@@ -221,6 +237,7 @@ AS BEGIN TRY
     WHERE MaSach = @MaSach;
 
     PRINT 'Sách đã được khôi phục thành công.';
+	SELECT N'Sách đã được khôi phục thành công.' AS errMsg;
 END TRY
 BEGIN CATCH
 	DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
@@ -232,23 +249,39 @@ GO
 CREATE proc dbo.spLaySachByMaSach
 @MaSach int
 AS
-	SELECT * FROM Sach 
-	WHERE MaSach = @MaSach and IsActive = 1
+	select s.MaSach,
+            s.TenSach ,
+            t.TenTacGia ,
+            tl.TenTheLoai ,
+            s.GiaBan ,
+            s.SoLuongTon ,
+            s.MoTa ,
+            s.AnhBia ,
+            s.CreatedDate,
+			s.IsActive
+	FROM Sach s
+        INNER JOIN TacGia t ON s.MaTacGia = t.MaTacGia
+        INNER JOIN TheLoai tl ON s.MaTheLoai = tl.MaTheLoai
+	Where s.IsActive = 1 and s.MaSach = @MaSach;
 go
 
 --thủ tục hiện sách ra màn hình
 Create proc dbo.spLaySach
 As begin try
-	select MaSach,
-		TenSach as [Tên sách],
-		MaTacGia,
-		MaTheLoai,
-		FORMAT(GiaBan, 'N0') as [Giá bán],
-		SoLuongTon,
-		MoTa,
-		AnhBia as [Ảnh bìa]
-	From Sach
-	Where IsActive = 1
+	select s.MaSach,
+            s.TenSach ,
+            t.TenTacGia ,
+            tl.TenTheLoai ,
+            s.GiaBan ,
+            s.SoLuongTon ,
+            s.MoTa ,
+            s.AnhBia ,
+            s.CreatedDate,
+			s.IsActive
+	FROM Sach s
+        INNER JOIN TacGia t ON s.MaTacGia = t.MaTacGia
+        INNER JOIN TheLoai tl ON s.MaTheLoai = tl.MaTheLoai
+	Where s.IsActive = 1;
 end try
 Begin catch
 	DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
@@ -258,4 +291,208 @@ GO
 
 insert into Users (Username, PasswordHash, UserStatus) 
 	values ('user', PWDENCRYPT('user'), 1)
+go
+
+insert into Users (Username, PasswordHash, Role, UserStatus) 
+	values ('admin', PWDENCRYPT('admin'), 'Admin', 1)
+go
+
+--thêm tác giả
+INSERT INTO TacGia (TenTacGia)
+VALUES 
+    (N'William Shakespeare'),
+    (N'Jane Austen'),
+    (N'Leo Tolstoy'),
+    (N'Charles Dickens'),
+    (N'Fyodor Dostoevsky'),
+    (N'George Orwell'),
+    (N'Mark Twain'),
+    (N'J.R.R. Tolkien'),
+    (N'Agatha Christie'),
+    (N'J.K. Rowling'),
+    (N'Ernest Hemingway'),
+    (N'Gabriel García Márquez'),
+    (N'Victor Hugo'),
+    (N'Homer'),
+    (N'Edgar Allan Poe'),
+    (N'Dan Brown'),
+    (N'Oscar Wilde'),
+    (N'Arthur Conan Doyle'),
+    (N'Haruki Murakami'),
+    (N'Franz Kafka'),
+    (N'Herman Melville'),
+    (N'John Steinbeck'),
+    (N'Emily Dickinson'),
+    (N'Alexandre Dumas'),
+    (N'Toni Morrison'),
+    (N'Harper Lee'),
+    (N'Khaled Hosseini'),
+    (N'Stephen King'),
+    (N'Virginia Woolf'),
+    (N'Mary Shelley'),
+    (N'George R.R. Martin'),
+    (N'Paulo Coelho'),
+    (N'Marcel Proust'),
+    (N'Margaret Atwood'),
+    (N'Miguel de Cervantes'),
+    (N'J.D. Salinger'),
+    (N'C.S. Lewis'),
+    (N'Ursula K. Le Guin'),
+    (N'Roald Dahl'),
+    (N'Stendhal'),
+    (N'Jules Verne'),
+    (N'Joseph Conrad'),
+    (N'Albert Camus'),
+    (N'Tolstoy Dostoevsky'),
+    (N'Umberto Eco'),
+    (N'Ralph Waldo Emerson'),
+    (N'Maya Angelou'),
+    (N'Ray Bradbury'),
+    (N'Thomas Hardy'),
+    (N'Salman Rushdie'),
+    (N'J.M. Barrie'),
+    (N'Neil Gaiman'),
+    (N'Michel Houellebecq'),
+    (N'Jack London'),
+    (N'Kurt Vonnegut'),
+    (N'Aldous Huxley'),
+    (N'Patrick Rothfuss'),
+    (N'Philip Pullman'),
+    (N'Louisa May Alcott'),
+    (N'Gustave Flaubert'),
+    (N'Sophocles'),
+    (N'Plato'),
+    (N'Aristotle'),
+    (N'Rumi'),
+    (N'Thich Nhat Hanh'),
+    (N'Anne Rice'),
+    (N'Sheryl Sandberg'),
+    (N'Lisa See'),
+    (N'Veronica Roth'),
+    (N'Suzanne Collins'),
+    (N'Nicholas Sparks'),
+    (N'James Joyce'),
+    (N'Zadie Smith'),
+    (N'Milan Kundera'),
+    (N'Anne Frank'),
+    (N'Thomas Mann'),
+    (N'George Eliot'),
+    (N'Tom Clancy'),
+    (N'Markus Zusak'),
+    (N'Kazuo Ishiguro'),
+    (N'Yann Martel'),
+    (N'Veronica Rossi'),
+    (N'Rick Riordan'),
+    (N'Colleen Hoover'),
+    (N'Rainbow Rowell'),
+    (N'E.L. James'),
+    (N'Tara Westover'),
+    (N'John Green'),
+    (N'Laura Hillenbrand'),
+    (N'Gillian Flynn'),
+    (N'Mitch Albom'),
+    (N'Lisa Genova'),
+    (N'Elizabeth Gilbert'),
+    (N'Kiera Cass'),
+    (N'Shakespeare Hafez'),
+    (N'Daphne du Maurier'),
+    (N'Samuel Beckett'),
+    (N'Vernon Lee'),
+    (N'Chimamanda Ngozi Adichie'),
+    (N'Toni Cade Bambara'),
+    (N'Sylvia Plath'),
+    (N'Taiye Selasi');
+go
+
+--thêm thể loại
+INSERT INTO TheLoai (TenTheLoai)
+VALUES 
+    (N'Văn học - Tiểu thuyết'),
+    (N'Văn học - Truyện ngắn'),
+    (N'Văn học - Khoa học viễn tưởng'),
+    (N'Văn học - Lãng mạn'),
+    (N'Văn học - Kinh dị'),
+    (N'Văn học - Trinh thám'),
+    (N'Văn học - Hài hước'),
+    (N'Văn học - Lịch sử'),
+    (N'Văn học - Phiêu lưu'),
+    (N'Văn học - Hiện thực'),
+
+    (N'Thiếu nhi - Truyện tranh'),
+    (N'Thiếu nhi - Truyện cổ tích'),
+    (N'Thiếu nhi - Truyện ngắn giáo dục'),
+    (N'Thiếu nhi - Sách tương tác'),
+
+    (N'Lịch sử - Tiểu thuyết lịch sử'),
+    (N'Lịch sử - Tư liệu và nghiên cứu'),
+
+    (N'Khoa học - Viễn tưởng'),
+    (N'Khoa học - Vũ trụ và vật lý'),
+    (N'Khoa học - Sinh học'),
+    (N'Khoa học - Công nghệ thông tin'),
+    (N'Khoa học - Môi trường'),
+
+    (N'Kinh tế - Kinh doanh'),
+    (N'Kinh tế - Tài chính'),
+    (N'Kinh tế - Quản lý'),
+    (N'Kinh tế - Marketing và Bán hàng'),
+
+    (N'Phát triển bản thân - Kỹ năng sống'),
+    (N'Phát triển bản thân - Quản lý thời gian'),
+    (N'Phát triển bản thân - Tư duy tích cực'),
+    (N'Phát triển bản thân - Lãnh đạo'),
+
+    (N'Tâm lý - Tình cảm'),
+    (N'Tâm lý - Trị liệu'),
+    (N'Tâm lý - Phát triển bản thân'),
+
+    (N'Tôn giáo - Tâm linh'),
+    (N'Tôn giáo - Triết học'),
+    (N'Tôn giáo - Phật giáo'),
+    (N'Tôn giáo - Thiên chúa giáo'),
+
+    (N'Nấu ăn - Sách công thức'),
+    (N'Nấu ăn - Ẩm thực vùng miền'),
+
+    (N'Du lịch - Hướng dẫn du lịch'),
+    (N'Du lịch - Văn hóa và con người'),
+
+    (N'Nghệ thuật - Mỹ thuật'),
+    (N'Nghệ thuật - Nhiếp ảnh'),
+    (N'Nghệ thuật - Thiết kế và thời trang'),
+
+    (N'Trinh thám - Tội phạm'),
+    (N'Trinh thám - Hành động'),
+
+    (N'Y học - Sách sức khỏe'),
+    (N'Y học - Dinh dưỡng'),
+
+    (N'Học thuật - Toán học'),
+    (N'Học thuật - Vật lý'),
+    (N'Học thuật - Sinh học'),
+    (N'Học thuật - Khoa học xã hội'),
+
+    (N'Giáo dục - Tham khảo'),
+    (N'Giáo dục - Học ngoại ngữ'),
+    (N'Giáo dục - Sách luyện thi'),
+
+    (N'Kỹ thuật - Công trình xây dựng'),
+    (N'Kỹ thuật - Cơ khí'),
+    (N'Kỹ thuật - Điện tử và viễn thông'),
+
+    (N'Thể thao - Sách tập luyện'),
+    (N'Thể thao - Kỹ thuật chơi thể thao'),
+
+    (N'Sách kỹ năng nghề nghiệp'),
+    (N'Sách hướng dẫn học tập và nghiên cứu'),
+
+    (N'Truyện tranh - Manga'),
+    (N'Truyện tranh - Manhwa'),
+    (N'Truyện tranh - Webtoon'),
+
+    (N'Sách thiếu nhi - Kể chuyện'),
+    (N'Sách thiếu nhi - Phát triển kỹ năng'),
+
+    (N'Sách điện tử'),
+    (N'Sách nói (Audio Book)');
 go
