@@ -10,12 +10,12 @@ namespace back_end.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class TopicController : ControllerBase
+public class BookController : ControllerBase
 {
     private readonly IConfiguration _configuration;
     private readonly Token _jwt;
 
-    public TopicController(IConfiguration configuration)
+    public BookController(IConfiguration configuration)
     {
         _configuration = configuration;
         _jwt = new Token();
@@ -192,7 +192,7 @@ public class TopicController : ControllerBase
                 using SqlCommand command = new();
                 command.Connection = connection;
                 command.CommandType = CommandType.StoredProcedure;
-                command.CommandText = "spCapNhatSach";
+                command.CommandText = "spThemSach";
 
                 // Lấy thông tin MaSach và TenSach trong Body
                 using (var reader = new StreamReader(Request.Body))
@@ -203,7 +203,13 @@ public class TopicController : ControllerBase
                     // Thêm các tham số cho thủ tục
                     command.Parameters.AddWithValue("@MaSach", jsonObject["TenSach"]?.Value<int>());
                     command.Parameters.AddWithValue("@TenSach", jsonObject["TenSach"]?.Value<string>());
+                    command.Parameters.AddWithValue("@MaTacGia", jsonObject["MaTacGia"]?.Value<int>());
+                    command.Parameters.AddWithValue("@MaTheLoai", jsonObject["MaTheLoai"]?.Value<int>());
                     command.Parameters.AddWithValue("Username", userName);
+                    command.Parameters.AddWithValue("@GiaBan", jsonObject["GiaBan"]?.Value<int>());
+                    command.Parameters.AddWithValue("@SoLuongTon", jsonObject["SoLuongTon"]?.Value<string>());
+                    command.Parameters.AddWithValue("@MoTa", jsonObject["MoTa"]?.Value<string>());
+                    command.Parameters.AddWithValue("@AnhBia", jsonObject["AnhBia"]?.Value<string>());
                 }
 
                 SqlDataAdapter da = new(command);

@@ -203,7 +203,8 @@ as begin try
         RAISERROR (N'Sách này đã tồn tại trong hệ thống.', 16, 1);
         RETURN;
     END
-	INSERT INTO Sach VALUES (@TenSach, @MaTacGia, @MaTheLoai, @GiaBan, @SoLuongTon, @MoTa, @AnhBia, GETDATE(), 1);
+	INSERT INTO Sach (TenSach, MaTacGia, MaTheLoai, GiaBan, SoLuongTon, MoTa, AnhBia, CreatedDate, IsActive)
+    VALUES (@TenSach, @MaTacGia, @MaTheLoai, @GiaBan, @SoLuongTon, @MoTa, @AnhBia, GETDATE(), 1);
 	PRINT 'Sách đã được thêm thành công.';
 end try
 Begin catch
@@ -233,7 +234,7 @@ as begin try
 	Update Sach
 	Set GiaBan = @GiaBan
 	where MaSach = @MaSach;
-	Print 'Giá sách đã được cập nhật thành công.';
+	Print 'Sách đã được cập nhật thành công.';
 end try
 Begin catch
 	DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
