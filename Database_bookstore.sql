@@ -248,15 +248,15 @@ GO
 CREATE proc dbo.spLaySachByMaSach
 @MaSach int
 AS
-	select s.MaSach AS [Mã Sách],
-            s.TenSach AS [Tên Sách],
-            t.TenTacGia AS [Tác Giả],
-            tl.TenTheLoai AS [Thể Loại],
-            s.GiaBan AS [Giá Bán],
-            s.SoLuongTon AS [Số Lượng Tồn],
-            s.MoTa AS [Mô Tả],
-            s.AnhBia AS [Ảnh Bìa],
-            s.CreatedDate AS [Ngày Tạo],
+	select s.MaSach,
+            s.TenSach ,
+            t.TenTacGia ,
+            tl.TenTheLoai ,
+            s.GiaBan ,
+            s.SoLuongTon ,
+            s.MoTa ,
+            s.AnhBia ,
+            s.CreatedDate,
 			s.IsActive
 	FROM Sach s
         INNER JOIN TacGia t ON s.MaTacGia = t.MaTacGia
@@ -267,15 +267,15 @@ go
 --thủ tục hiện sách ra màn hình
 Create proc dbo.spLaySach
 As begin try
-	select s.MaSach AS [Mã Sách],
-            s.TenSach AS [Tên Sách],
-            t.TenTacGia AS [Tác Giả],
-            tl.TenTheLoai AS [Thể Loại],
-            s.GiaBan AS [Giá Bán],
-            s.SoLuongTon AS [Số Lượng Tồn],
-            s.MoTa AS [Mô Tả],
-            s.AnhBia AS [Ảnh Bìa],
-            s.CreatedDate AS [Ngày Tạo],
+	select s.MaSach,
+            s.TenSach ,
+            t.TenTacGia ,
+            tl.TenTheLoai ,
+            s.GiaBan ,
+            s.SoLuongTon ,
+            s.MoTa ,
+            s.AnhBia ,
+            s.CreatedDate,
 			s.IsActive
 	FROM Sach s
         INNER JOIN TacGia t ON s.MaTacGia = t.MaTacGia
