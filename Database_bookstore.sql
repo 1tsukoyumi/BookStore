@@ -47,8 +47,6 @@ create table Sach (
 );
 Go
 
-
-
 --bảng đơn hàng
 Create table HoaDon (
 	MaHoaDon int identity(1,1) primary key,
@@ -71,8 +69,6 @@ Create table CTHoaDon (
 	Constraint FK_CTHoaDon_Sach foreign key (MaSach) references Sach(MaSach)
 );
 Go
-
-
 
 SET ANSI_NULLS ON
 GO
@@ -108,13 +104,13 @@ As begin
 end;
 Go
 
---thủ tục đăng nhập cho user
+--thủ tục đăng nhập
 create proc dbo.spUserLogin
 	@Username nvarchar(50),
 	@Password nvarchar(100)
 as begin try
 	if not exists (
-		select 1 from Users
+		select * from Users
 		Where Username = @Username
 			and PWDCOMPARE(@Password, PasswordHash) = 1
 			And Role = 'User'
@@ -129,7 +125,7 @@ as begin try
 		set LastLogin = getdate()
 		Where Username = @Username;
 --trả về thông tin user
-	select UserID, CreatedDate
+	select UserID, Username, Role, LastLogin, CreatedDate
 		from Users
 		Where Username = @Username;
 	end try
@@ -163,9 +159,8 @@ Create proc dbo.spAdminLogin
 	@Password nvarchar(100)
 as begin try
 	if not exists (
-		select 1 from Users
+		select * from Users
 		Where Username = @Username
-		--dùng bảo mật hashbytes để mã hoá password
 			and PWDCOMPARE(@Password, PasswordHash) = 1
 			And Role = 'Admin'
 			And UserStatus = 1
@@ -201,7 +196,7 @@ Create proc dbo.spThemSach
 	@AnhBia nvarchar(200) 
 as begin try
 	if exists (
-		select 1 from Sach
+		select * from Sach
 		Where TenSach = @TenSach
 	)
 	BEGIN
@@ -229,7 +224,7 @@ Create proc dbo.spCapNhatSach
 	@AnhBia nvarchar(200) 
 as begin try
 	if not exists (
-		select 1 from Sach where MaSach = @MaSach and IsActive = 1
+		select * from Sach where MaSach = @MaSach and IsActive = 1
 	)
 	Begin
 		raiserror (N'Sách không tồn tại hoặc đã bị xóa.', 16, 1);
@@ -251,7 +246,7 @@ Create proc dbo.spAnSach
 	@MaSach int
 as begin try
 	if not exists (
-		select 1 from Sach where MaSach = @MaSach and IsActive = 1
+		select * from Sach where MaSach = @MaSach and IsActive = 1
 	)
 	Begin
 		raiserror (N'Sách không tồn tại hoặc đã bị xóa.', 16, 1);
@@ -273,7 +268,7 @@ CREATE PROC dbo.spHienSach
     @MaSach INT
 AS BEGIN TRY
     IF NOT EXISTS (
-        SELECT 1 
+        SELECT * 
         FROM Sach 
         WHERE MaSach = @MaSach AND IsActive = 0
     )
@@ -293,7 +288,7 @@ BEGIN CATCH
 END CATCH;
 GO
 
---thủ tục xuất danh sách thể loại theo danh mục lớn
+--thủ tục xuất danh sách thể loại
 Create proc dbo.spLaySachTheoTheLoai
 as begin try
 	select
@@ -312,8 +307,12 @@ Create proc dbo.spLaySach
 As begin try
 	select MaSach,
 		TenSach as [Tên sách],
-		AnhBia as [Ảnh bìa],
-		FORMAT(GiaBan, 'N0') as [Giá bán]
+		MaTacGia,
+		MaTheLoai,
+		FORMAT(GiaBan, 'N0') as [Giá bán],
+		SoLuongTon,
+		MoTa,
+		AnhBia as [Ảnh bìa]
 	From Sach
 	Where IsActive = 1
 end try
