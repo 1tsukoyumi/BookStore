@@ -201,15 +201,15 @@ public class BookController : ControllerBase
                     var jsonObject = JObject.Parse(requestBody);
 
                     // Thêm các tham số cho thủ tục
-                    command.Parameters.AddWithValue("@MaSach", jsonObject["TenSach"]?.Value<int>());
+                    //command.Parameters.AddWithValue("@MaSach", jsonObject["MaSach"]?.Value<int>());
                     command.Parameters.AddWithValue("@TenSach", jsonObject["TenSach"]?.Value<string>());
                     command.Parameters.AddWithValue("@MaTacGia", jsonObject["MaTacGia"]?.Value<int>());
                     command.Parameters.AddWithValue("@MaTheLoai", jsonObject["MaTheLoai"]?.Value<int>());
-                    command.Parameters.AddWithValue("Username", userName);
                     command.Parameters.AddWithValue("@GiaBan", jsonObject["GiaBan"]?.Value<int>());
-                    command.Parameters.AddWithValue("@SoLuongTon", jsonObject["SoLuongTon"]?.Value<string>());
+                    command.Parameters.AddWithValue("@SoLuongTon", jsonObject["SoLuongTon"]?.Value<int>());
                     command.Parameters.AddWithValue("@MoTa", jsonObject["MoTa"]?.Value<string>());
                     command.Parameters.AddWithValue("@AnhBia", jsonObject["AnhBia"]?.Value<string>());
+                    //command.Parameters.AddWithValue("@Username", userName);
                 }
 
                 SqlDataAdapter da = new(command);
@@ -236,7 +236,7 @@ public class BookController : ControllerBase
             return BadRequest(new { message = ex.Message.ToString() });
         }
     }
-    [HttpPut("/update/{MaSach?}")]
+    [HttpPut("update/{MaSach}")]
     public async Task<ActionResult> UpdateSach(int? MaSach)
     {
         try
@@ -278,9 +278,14 @@ public class BookController : ControllerBase
                     var jsonObject = JObject.Parse(requestBody);
 
                     // Thêm các tham số cho thủ tục
-                    command.Parameters.AddWithValue("@MaSach",MaSach);
+                    command.Parameters.AddWithValue("@MaSach", MaSach);
                     command.Parameters.AddWithValue("@TenSach", jsonObject["TenSach"]?.Value<string>());
-                    command.Parameters.AddWithValue("@Username", userName);
+                    command.Parameters.AddWithValue("@MaTacGia", jsonObject["MaTacGia"]?.Value<int>());
+                    command.Parameters.AddWithValue("@MaTheLoai", jsonObject["MaTheLoai"]?.Value<int>());
+                    command.Parameters.AddWithValue("@GiaBan", jsonObject["GiaBan"]?.Value<int>());
+                    command.Parameters.AddWithValue("@SoLuongTon", jsonObject["SoLuongTon"]?.Value<int>());
+                    command.Parameters.AddWithValue("@MoTa", jsonObject["MoTa"]?.Value<string>());
+                    command.Parameters.AddWithValue("@AnhBia", jsonObject["AnhBia"]?.Value<string>());
                 }
 
                 SqlDataAdapter da = new(command);
@@ -289,6 +294,75 @@ public class BookController : ControllerBase
 
                 // Server gửi thông báo về cho client
                 // dt.Rows[0]["errMsg"] đây là dữ liệu mà trong câu thủ tục trả về               
+                return new ContentResult
+                {
+                    Content = JsonConvert.SerializeObject(new { message = dt.Rows[0]["errMsg"] }),
+                    ContentType = "application/json",
+                    StatusCode = 200
+                };
+            }
+            else
+            {
+                // Token không hợp lệ
+                return Unauthorized(new { message = "Token is invalid" });
+            }
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { message = ex.Message.ToString() });
+        }
+    }
+
+    [HttpPut("restore")]
+    public async Task<ActionResult> RestoreSach()
+    {
+        try
+        {
+            string authHeader = "";
+            string token = "";
+
+            // Lấy token từ header Authorization
+            authHeader = Request.Headers["Authorization"];
+            if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer "))
+            {
+                return Unauthorized(new { message = "Missing or invalid Authorization header" });
+            }
+
+            token = authHeader["Bearer ".Length..].Trim();
+
+            // Gọi hàm ValidateToken
+            if (_jwt.ValidateToken(token, out ClaimsPrincipal? claims))
+            {
+                // Token hợp lệ và lấy thông tin userName trong payload
+                var userName = claims?.FindFirst(c => c.Type == "Username")?.Value;
+
+                string connectionString = _configuration.GetConnectionString("DefaultConnection");
+                using SqlConnection connection = new(connectionString);
+                if (connection.State == ConnectionState.Closed)
+                {
+                    await connection.OpenAsync();
+                }
+
+                using SqlCommand command = new();
+                command.Connection = connection;
+                command.CommandType = CommandType.StoredProcedure;
+                command.CommandText = "spHienSach";
+
+                // Lấy thông tin MaSach trong Body
+                using (var reader = new StreamReader(Request.Body))
+                {
+                    var requestBody = await reader.ReadToEndAsync();
+                    var jsonObject = JObject.Parse(requestBody);
+
+                    // Thêm tham số cho thủ tục
+                    command.Parameters.AddWithValue("@MaSach", jsonObject["MaSach"]?.Value<int>());
+                }
+
+                SqlDataAdapter da = new(command);
+                DataTable dt = new();
+                da.Fill(dt);
+
+                // Server gửi thông báo về cho client
                 return new ContentResult
                 {
                     Content = JsonConvert.SerializeObject(new { message = dt.Rows[0]["errMsg"] }),
@@ -352,7 +426,7 @@ public class BookController : ControllerBase
 
                     // Thêm các tham số cho thủ tục
                     command.Parameters.AddWithValue("@MaSach", jsonObject["MaSach"]?.Value<int>());
-                    command.Parameters.AddWithValue("@Username", userName);
+                    //command.Parameters.AddWithValue("@Username", userName);
                 }
 
                 SqlDataAdapter da = new(command);
