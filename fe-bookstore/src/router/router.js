@@ -21,7 +21,8 @@ const routes = [
     {
         path: '/san-pham',
         name: 'SachComponent',
-        component: SachComponent
+        component: SachComponent,
+        meta: { requiresAuth: true }
     },
     {
         path: '/tac-gia',
@@ -58,7 +59,7 @@ router.beforeEach((to, from, next) => {
 
     if (to.meta.requiresAuth && !isAuthenticated) {
         // Nếu cần đăng nhập mà chưa đăng nhập, điều hướng về trang login
-        next();
+        next('/login');
     } else {
         // Nếu đã đăng nhập hoặc không cần bảo mật, cho phép điều hướng
         next();

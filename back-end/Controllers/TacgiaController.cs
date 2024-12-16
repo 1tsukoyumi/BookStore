@@ -10,19 +10,19 @@ namespace back_end.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class TopicController : ControllerBase
+public class TacgiaController : ControllerBase
 {
     private readonly IConfiguration _configuration;
     private readonly Token _jwt;
 
-    public TopicController(IConfiguration configuration)
+    public TacgiaController(IConfiguration configuration)
     {
         _configuration = configuration;
         _jwt = new Token();
     }
 
-    [HttpGet(Name = "Lay_Sach")]
-    public async Task<ActionResult> LaySach([FromQuery] int? MaSach)
+    [HttpGet(Name = "Get all Tac gia")]
+    public async Task<ActionResult> GetAllTacGia([FromQuery] int? MaTacGia )
     {
         try
         {
@@ -56,14 +56,14 @@ public class TopicController : ControllerBase
                 command.CommandType = CommandType.StoredProcedure;
 
                 // Nếu người dùng có truyền mã sách
-                if (MaSach.HasValue)
+                if (MaTacGia.HasValue)
                 {
-                    command.CommandText = "spLaySachByMaSach";
-                    command.Parameters.AddWithValue("@MaSach", MaSach);
+                    command.CommandText = "spGetTacGiaByMaTG";
+                    command.Parameters.AddWithValue("@MaTacGia", MaTacGia);
                 }
                 else
                 {
-                    command.CommandText = "spLaySach";
+                    command.CommandText = "spGetAllTacGia";
                 }
 
                 SqlDataAdapter da = new(command);
@@ -90,8 +90,8 @@ public class TopicController : ControllerBase
         }
     }
 
-    [HttpGet("{MaSach?}", Name = "Get_Sach_With_Another_Way")]
-    public async Task<ActionResult> GetSachOther(int? MaSach)
+    [HttpGet("{MaTacGia?}")]
+    public async Task<ActionResult> GetTacGiaByID(int? MaTacGia)
     {
         try
         {
@@ -125,14 +125,10 @@ public class TopicController : ControllerBase
                 command.CommandType = CommandType.StoredProcedure;
 
                 // Nếu có truyền vào mã sách
-                if (MaSach.HasValue)
+                if (MaTacGia.HasValue)
                 {
-                    command.CommandText = "spLaySachByMaSach";
-                    command.Parameters.AddWithValue("@MaSach", MaSach);
-                }
-                else
-                {
-                    command.CommandText = "spLaySach";
+                    command.CommandText = "spGetTacGiaByID";
+                    command.Parameters.AddWithValue("@MaTacGia", MaTacGia);
                 }
 
                 SqlDataAdapter da = new(command);
@@ -160,7 +156,7 @@ public class TopicController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult> PostSach()
+    public async Task<ActionResult> CreateTacGia()
     {
         try
         {
@@ -192,7 +188,7 @@ public class TopicController : ControllerBase
                 using SqlCommand command = new();
                 command.Connection = connection;
                 command.CommandType = CommandType.StoredProcedure;
-                command.CommandText = "spCapNhatSach";
+                command.CommandText = "spUpdateTacGia";
 
                 // Lấy thông tin MaSach và TenSach trong Body
                 using (var reader = new StreamReader(Request.Body))
@@ -201,9 +197,8 @@ public class TopicController : ControllerBase
                     var jsonObject = JObject.Parse(requestBody);
 
                     // Thêm các tham số cho thủ tục
-                    command.Parameters.AddWithValue("@MaSach", jsonObject["TenSach"]?.Value<int>());
-                    command.Parameters.AddWithValue("@TenSach", jsonObject["TenSach"]?.Value<string>());
-                    command.Parameters.AddWithValue("Username", userName);
+                    command.Parameters.AddWithValue("@MaTacGia", jsonObject["MaTacGia"]?.Value<int>());
+                    command.Parameters.AddWithValue("@TenTacGia", jsonObject["TenTacGia"]?.Value<string>());
                 }
 
                 SqlDataAdapter da = new(command);
@@ -230,8 +225,8 @@ public class TopicController : ControllerBase
             return BadRequest(new { message = ex.Message.ToString() });
         }
     }
-    [HttpPut("/update/{MaSach?}")]
-    public async Task<ActionResult> UpdateSach(int? MaSach)
+    [HttpPut("{MaTacGia?}")]
+    public async Task<ActionResult> UpdateTacGia(int? MaTacGia)
     {
         try
         {
@@ -263,18 +258,16 @@ public class TopicController : ControllerBase
                 using SqlCommand command = new();
                 command.Connection = connection;
                 command.CommandType = CommandType.StoredProcedure;
-                command.CommandText = "spCapNhatSach";
+                command.CommandText = "spUpdateTacGia";
 
-                // Lấy thông tin MaSach và TenSach trong Body
                 using (var reader = new StreamReader(Request.Body))
                 {
                     var requestBody = await reader.ReadToEndAsync();
                     var jsonObject = JObject.Parse(requestBody);
 
                     // Thêm các tham số cho thủ tục
-                    command.Parameters.AddWithValue("@MaSach",MaSach);
-                    command.Parameters.AddWithValue("@TenSach", jsonObject["TenSach"]?.Value<string>());
-                    command.Parameters.AddWithValue("@Username", userName);
+                    command.Parameters.AddWithValue("@MaTacGia",MaTacGia);
+                    command.Parameters.AddWithValue("@TenTacGia", jsonObject["TenTacGia"]?.Value<string>());
                 }
 
                 SqlDataAdapter da = new(command);
@@ -303,8 +296,8 @@ public class TopicController : ControllerBase
     }
 
 
-    [HttpDelete("delete")]
-    public async Task<ActionResult> DeleteSach()
+    [HttpPost("delete")]
+    public async Task<ActionResult> DeleteTacGia()
     {
         try
         {
@@ -336,7 +329,7 @@ public class TopicController : ControllerBase
                 using SqlCommand command = new();
                 command.Connection = connection;
                 command.CommandType = CommandType.StoredProcedure;
-                command.CommandText = "spAnSach";
+                command.CommandText = "spAnTacGia";
 
                 // Lấy thông tin MaSach và TenSach trong Body
                 using (var reader = new StreamReader(Request.Body))
@@ -345,8 +338,7 @@ public class TopicController : ControllerBase
                     var jsonObject = JObject.Parse(requestBody);
 
                     // Thêm các tham số cho thủ tục
-                    command.Parameters.AddWithValue("@MaSach", jsonObject["MaSach"]?.Value<int>());
-                    command.Parameters.AddWithValue("@Username", userName);
+                    command.Parameters.AddWithValue("@MaTacGia", jsonObject["MaTacGia"]?.Value<int>());
                 }
 
                 SqlDataAdapter da = new(command);

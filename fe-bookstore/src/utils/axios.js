@@ -4,7 +4,7 @@ let auth = localStorage.getItem('auth');
 if (auth == '') location = 'http://localhost:8080/login';
 
 const instance = axios.create({
-    baseURL: 'http://192.168.1.10:5021',
+    baseURL: 'http://localhost:5021',
     headers: { Authorization: 'Bearer ' + auth }
 });
 

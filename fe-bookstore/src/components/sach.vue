@@ -2,7 +2,6 @@
     <div class="text-center my-3">
         <div class="mb-2"><b>DANH SÁCH SẢN PHẨM</b></div>
         <v-btn elevation="0" color="success" @click="openDialogUpdateSach(null)">
-            <v-icon class="mr-2">mdi-plus-circle</v-icon>
             Thêm mới
         </v-btn>
     </div>
@@ -11,12 +10,12 @@
         <b>{{ errorMessage }}</b>
     </div>
 
-    <v-table style="width: 400px" class="mx-auto">
+    <v-table style="width: 80%" class="mx-auto">
         <thead>
             <tr>
                 <th> Mã sách </th>
                 <th class="text-left"> Tên sách </th>
-                <th class="text-left"> sách </th>
+                <th class="text-left"> Thể loại </th>
                 <th class="text-left"> Tác giả </th>
                 <th class="text-left"> Số lượng tồn </th>
                 <th class="text-left"> Giá bán </th>
@@ -26,23 +25,45 @@
             </tr>
         </thead>
         <tbody>
-            <tr v-for="item in dataSach" :key="item.maTL">
-                <td>{{ item.MaTL }}</td>
+            <tr v-for="item in dataSach" :key="item.MaSach">
+                <td>{{ item.MaSach }}</td>
                 <td>{{ item.TenSach }}</td>
-                <td><v-icon @click="openDialogUpdateSach(item)">mdi-pencil</v-icon></td>
-                <td><v-icon @click="showDialogDeleteConfirm(item)">mdi-delete</v-icon></td>
+                <td>{{ item.TenTheLoai }}</td>
+                <td>{{ item.TenTacGia }}</td>
+                <td>{{ item.SoLuongTon }}</td>
+                <td>{{ item.GiaBan }}</td>
+                <td>{{ item.AnhBia }}</td>
+                <td><v-icon style="background-color: greenyellow; "
+                        @click="openDialogUpdateSach(item)">mdi-pencil</v-icon></td>
+                <td><v-icon style="background-color: red; " @click="showDialogDeleteConfirm(item)">mdi-delete</v-icon>
+                </td>
             </tr>
         </tbody>
     </v-table>
 
     <!-- Hộp thoại Thêm, sửa dữ liệu -->
-    <v-dialog width="400" scrollable v-model="showDialogUpdate">
+    <v-dialog width="50%" scrollable v-model="showDialogUpdate">
         <template v-slot:default="{ isActive }">
             <v-card prepend-icon="mdi-earth" :title="dialogUpdateTitle">
                 <v-divider class="mb-3"></v-divider>
 
                 <v-card-text class="px-4">
                     <v-text-field v-model="objSach.TenSach" label="Tên sách" variant="outlined"></v-text-field>
+                </v-card-text>
+                <v-card-text class="px-4">
+                    <v-text-field v-model="objSach.MaTacGia" label="Mã tác giả" variant="outlined"></v-text-field>
+                </v-card-text>
+                <v-card-text class="px-4">
+                    <v-text-field v-model="objSach.MaTheLoai" label="Mã thể loại" variant="outlined"></v-text-field>
+                </v-card-text>
+                <v-card-text class="px-4">
+                    <v-text-field v-model="objSach.SoLuongTon" label="Số lượng tồn" variant="outlined"></v-text-field>
+                </v-card-text>
+                <v-card-text class="px-4">
+                    <v-text-field v-model="objSach.GiaBan" label="Giá bán" variant="outlined"></v-text-field>
+                </v-card-text>
+                <v-card-text class="px-4">
+                    <v-text-field v-model="objSach.AnhBia" label="Ảnh bìa" variant="outlined"></v-text-field>
                 </v-card-text>
 
                 <v-divider></v-divider>
@@ -83,8 +104,16 @@ export default {
         showDialogDelete: false,
         dialogUpdateTitle: "",
         objSach: {
-            MaTL: 0,
-            TenSach: ""
+            MaSach: 0,
+            TenSach: "",
+            MaTacGia: 0,
+            TenTacGia: "",
+            MaTheLoai: 0,
+            TenTheLoai: "",
+            GiaBan: 0,
+            SoLuongTon: 0,
+            MoTa: "",
+            AnhBia: ""
         },
         errorMessage: "",
         colorMessage: "blue"
@@ -104,69 +133,107 @@ export default {
         openDialogUpdateSach(obj) {
             this.showDialogUpdate = true;
             if (obj == null) {
-                this.dialogUpdateTitle = "Thêm mới sách"
-                this.objSach.MaTL = 0;
+                this.dialogUpdateTitle = "Thêm mới sách";
+                this.objSach.MaSach = 0;
                 this.objSach.TenSach = "";
+                this.objSach.MaTacGia = 0;
+                this.objSach.MaTheLoai = 0;
+                this.objSach.GiaBan = 0;
+                this.objSach.SoLuongTon = 0;
+                this.objSach.MoTa = "";
+                this.objSach.AnhBia = "";
             }
             else {
-                this.dialogUpdateTitle = "Chỉnh sửa thông tin sách"
-                this.objSach.MaTL = obj.MaTL;
+                this.dialogUpdateTitle = "Chỉnh sửa thông tin sách";
+                this.objSach.MaSach = obj.MaSach;
                 this.objSach.TenSach = obj.TenSach;
+                this.objSach.MaTacGia = obj.MaTacGia;
+                this.objSach.MaTheLoai = obj.MaTheLoai;
+                this.objSach.GiaBan = obj.GiaBan;
+                this.objSach.SoLuongTon = obj.SoLuongTon;
+                this.objSach.MoTa = obj.MoTa;
+                this.objSach.AnhBia = obj.AnhBia;
             }
         },
 
         // Thực hiện thao tác thêm hoặc chỉnh sửa thông tin
         saveUpdateAction() {
-            if (this.objSach.TenSach == "")
+            if (!this.objSach.TenSach || !this.objSach.MaTacGia || !this.objSach.MaTheLoai || !this.objSach.GiaBan || !this.objSach.AnhBia) {
+                this.errorMessage = "Vui lòng điền đầy đủ thông tin.";
+                this.colorMessage = "red";
                 return;
+            }
+            if (this.objSach.MaSach == 0) {
+                axios.post('/Sach',
+                    {
+                        TenSach: this.objSach.TenSach,
+                        MaTacGia: this.objSach.MaTacGia,
+                        MaTheLoai: this.objSach.MaTheLoai,
+                        SoLuongTon: this.objSach.SoLuongTon,
+                        GiaBan: this.objSach.GiaBan,
+                        AnhBia: this.objSach.AnhBia
+                    })
+                    .then((response) => {
+                        this.showDialogUpdate = false;
+                        this.getSach();
+                        this.errorMessage = response.data.message;
+                        this.colorMessage = "blue";
+                    })
+                    .catch((error) => {
+                        this.errorMessage = error.response.data.message;
+                        this.colorMessage = "red";
+                        this.showDialogUpdate = false;
+                    });
+            } else {
+                const payload = {
+                    MaSach: this.objSach.MaSach,
+                    TenSach: this.objSach.TenSach,
+                    MaTacGia: this.objSach.MaTacGia,
+                    MaTheLoai: this.objSach.MaTheLoai,
+                    SoLuongTon: this.objSach.SoLuongTon,
+                    GiaBan: this.objSach.GiaBan,
+                    AnhBia: this.objSach.AnhBia
+                };
 
-            axios.post('/Sach/update',
-                {
-                    MaTL: this.objSach.MaTL,
-                    TenSach: this.objSach.TenSach
-                })
-                .then((response) => {
-                    this.showDialogUpdate = false;
-                    this.getSach();
-                    this.errorMessage = response.data.message;
-                    this.colorMessage = "blue";
-                })
-                .catch((error) => {
-                    this.errorMessage = error.response.data.message;
-                    this.colorMessage = "red";
-                    this.showDialogUpdate = false;
-                });
+                // Kiểm tra dữ liệu trước khi gửi
+                console.log("Dữ liệu gửi đi:", payload);
+
+                axios.put('/Sach', payload)
+                    .then((response) => {
+                        this.showDialogUpdate = false;
+                        this.getSach();
+                        this.errorMessage = response.data.message;
+                        this.colorMessage = "blue";
+                    })
+                    .catch((error) => {
+                        this.errorMessage = error?.response?.data?.message || "Lỗi không xác định!";
+                        this.colorMessage = "red";
+                        this.showDialogUpdate = false;
+                    });
+            }
         },
 
         // Hiển thị hộp thoại Confirm trước khi xoá
         showDialogDeleteConfirm(obj) {
-            console.log("truoc khi mo hop thoai",this.objSach)
-            // Lưu giữ thông tin mã sách cần xoá
-            this.objSach.MaTL = obj.MaTL;
-            this.objSach.TenSach = obj.TenSach;
-           
+            this.objSach.MaSach = obj.MaSach;
             this.showDialogDelete = true;
-             console.log("sau khi mo hop thoai",this.objSach)
         },
 
         // Xoá dữ liệu
         deleteAction() {
-            axios.post('/Sach/delete',
-                {
-                    MaTL: this.objSach.MaTL
-                })
+            axios.delete(`/Sach/${this.objSach.MaSach}`)
                 .then((response) => {
-                    this.getSach();
                     this.showDialogDelete = false;
-                    this.errorMessage = response.data.message;
-                    this.colorMessage = "blue";
+                    this.getSach();
+                    console.log(response.data.message);
                 })
                 .catch((error) => {
-                    this.errorMessage = error.response.data.message;
-                    this.colorMessage = "red";
-                    this.showDialogDelete = false;
+                    console.error(error.response?.data?.message || "Lỗi không xác định");
                 });
-        },
+
+        }
+
+
     }
 }
 </script>

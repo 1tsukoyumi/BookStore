@@ -76,35 +76,6 @@ GO
 SET QUOTED_IDENTIFIER ON
 GO
 
---trigger ngăn không cho user tự thay đổi role
-Create trigger trg_RoleChange
-On Users
-instead of update
-As begin
-	if exists (
-		select 1
-		From inserted i
-		Join deleted d on i.UserID = d.UserID
-		Where i.Role = 'Admin' and d.Role <> 'Admin'
-			and SYSTEM_USER not in (
-				select Username from Users where Role = 'Admin'
-			)
-	)
-	Begin
-		raiserror(N'Chỉ Admin có quyền chỉnh sửa', 16, 1);
-		Rollback;
-	end
-	else begin
-		update Users
-		Set Username = i.Username,
-            PasswordHash = i.PasswordHash,
-            Role = i.Role,
-            CreatedDate = i.CreatedDate
-		from Users u join inserted i on u.UserID = i.UserID
-	end
-end;
-Go
-
 --thủ tục đăng nhập
 create proc dbo.spUserLogin
 	@Username nvarchar(50),
@@ -152,38 +123,6 @@ EXEC sys.sp_addextendedproperty
     @level0type = N'SCHEMA', @level0name = N'dbo', 
     @level1type = N'TABLE', @level1name = N'Users', 
     @level2type = N'COLUMN', @level2name = N'UserStatus';
-go
-
---thủ tục đăng nhập cho admin
-Create proc dbo.spAdminLogin
-	@Username nvarchar(50),
-	@Password nvarchar(100)
-as begin try
-	if not exists (
-		select * from Users
-		Where Username = @Username
-			and PWDCOMPARE(@Password, PasswordHash) = 1
-			And Role = 'Admin'
-			And UserStatus = 1
-	)
-	Begin
-		raiserror (N'Tài khoản hoặc mật khẩu không chính xác, hoặc tài khoản không phải Admin.', 16, 1);
-		Return;
-	end
---cập nhật thời gian đăng nhập cuối cùng
-	Update Users
-		set LastLogin = getdate()
-		Where Username = @Username;
---trả về thông tin admin
-	select UserID, Username, Role, LastLogin, CreatedDate
-		from Users
-		Where Username = @Username;
-	end try
-	Begin catch
---xử lý lỗi
-		declare @error nvarchar(1000) = error_message();
-		Raiserror(@error, 16, 1);
-	end catch
 go
 
 --thủ tục thêm sách mới
@@ -284,20 +223,6 @@ AS BEGIN TRY
     PRINT 'Sách đã được khôi phục thành công.';
 END TRY
 BEGIN CATCH
-	DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
-    RAISERROR (@ErrorMessage, 16, 1);
-END CATCH;
-GO
-
---thủ tục xuất danh sách thể loại
-Create proc dbo.spLaySachTheoTheLoai
-as begin try
-	select
-		TenTheLoai
-	from Theloai
-	For json path, include_null_values; --trả về dưới định dang json
-end try
-begin catch
 	DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
     RAISERROR (@ErrorMessage, 16, 1);
 END CATCH;
