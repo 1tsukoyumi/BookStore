@@ -302,6 +302,14 @@ begin catch
 END CATCH;
 GO
 
+--thủ tục lấy sách bằng mã
+CREATE proc dbo.spLaySachByMaSach
+@MaSach int
+AS
+	SELECT * FROM Sach 
+	WHERE MaSach = @MaSach and IsActive = 1
+go
+
 --thủ tục hiện sách ra màn hình
 Create proc dbo.spLaySach
 As begin try
