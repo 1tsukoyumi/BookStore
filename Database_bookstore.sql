@@ -4,6 +4,7 @@ Go
 Use BookStore
 Go
 
+
 --bảng quản lý thông tin người dùng
 Create table Users (
 	UserID	int identity(1,1) primary key,
@@ -20,19 +21,28 @@ Create table Users (
 );
 Go
 
+--bảng danh mục
+Create table Categories (
+	CategoryID int identity(1,1) primary key,
+	MainCategory NVARCHAR(100) null,
+	CategoryName nvarchar(100) not null
+);
+Go
+
 --bảng quản lý sách
 create table Books (
 	BookID int identity(1,1) primary key,
 	Title nvarchar(200) not null,
 	Author nvarchar(100) not null,
 	Publisher nvarchar(100) not null,
-	Category nvarchar(100) not null,
+	CategoryID int not null,
 	Price int not null check(Price >= 0),
 	SoldQuantity int not null check(SoldQuantity >= 0) default 0,
 	Description nvarchar(max) null,
 	CoverImage nvarchar(200) not null, --URL ảnh bìa
 	CreatedDate datetime not null default getdate(),
 	IsActive bit null
+	constraint FK_Books_Categories foreign key (CategoryID) references Categories(CategoryID)
 );
 Go
 
@@ -42,7 +52,7 @@ Create table Orders (
 	UserID int not null,
 	OrderDate datetime not null default getdate(),
 	TotalAmount int not null check(TotalAmount >= 0),
-	Status nvarchar(50) not null check(status in ('Pending','Conpleted','Cancelled')),
+	Status nvarchar(50) not null check(status in ('Pending','Completed','Cancelled')),
 	constraint FK_Oders_Users foreign key (UserID) references Users(UserID)
 );
 Go
@@ -78,14 +88,6 @@ Create table Payments (
 	PaymentMethod nvarchar(50) not null,
 	AmountPaid int not null check(AmountPaid >= 0),
 	constraint FK_Payments_Orders foreign key (OrderID) references Orders(OrderID)
-);
-Go
-
---bảng danh mục
-Create table Categories (
-	CategoryID int identity(1,1) primary key,
-	MainCategory NVARCHAR(100) null,
-	CategoryName nvarchar(100) not null
 );
 Go
 
