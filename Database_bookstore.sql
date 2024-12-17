@@ -57,6 +57,7 @@ Create table HoaDon (
 	MaHoaDon int identity(1,1) primary key,
 	UserID int not null,
 	OrderDate datetime not null default getdate(),
+    ThanhTien int default 0,
 	--Status nvarchar(50) not null check(status in ('Pending','Completed','Cancelled')),
 	constraint FK_HoaDon_Users foreign key (UserID) references Users(UserID)
 );
@@ -484,6 +485,207 @@ BEGIN CATCH
     DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
     RAISERROR (@ErrorMessage, 16, 1);
 END CATCH;
+GO
+
+--Tạo hóa đơn mới
+CREATE PROC dbo.spCreateHoaDon
+    @UserID INT,
+    @OrderDetails NVARCHAR(MAX) -- JSON chứa danh sách sách
+AS
+BEGIN TRY
+    BEGIN TRANSACTION;
+
+    -- Thêm hóa đơn mới
+    INSERT INTO HoaDon (UserID, OrderDate, ThanhTien)
+    VALUES (@UserID, GETDATE(), 0);
+
+    -- Lấy mã hóa đơn vừa được tạo
+    DECLARE @MaHoaDon INT = SCOPE_IDENTITY();
+
+    -- Bảng tạm để lưu chi tiết hóa đơn từ JSON
+    DECLARE @Details TABLE (
+        MaSach INT,
+        SoLuong INT,
+        GiaBan INT
+    );
+    -- Parse JSON vào bảng tạm
+    INSERT INTO @Details (MaSach, SoLuong, GiaBan)
+    SELECT 
+        JSON_VALUE(d.value, '$.MaSach') AS MaSach,
+        JSON_VALUE(d.value, '$.SoLuong') AS SoLuong,
+        JSON_VALUE(d.value, '$.GiaBan') AS GiaBan
+    FROM OPENJSON(@OrderDetails) AS d;
+
+    -- Kiểm tra số lượng tồn của từng sách
+    IF EXISTS (
+        SELECT 1
+        FROM @Details d
+        INNER JOIN Sach s ON d.MaSach = s.MaSach
+        WHERE d.SoLuong > s.SoLuongTon
+    )
+    BEGIN
+        RAISERROR (N'Số lượng tồn không đủ cho một hoặc nhiều sách.', 16, 1);
+        ROLLBACK TRANSACTION;
+        RETURN;
+    END;
+
+    -- Trừ số lượng tồn và thêm chi tiết hóa đơn
+    UPDATE s
+    SET s.SoLuongTon = s.SoLuongTon - d.SoLuong
+    FROM Sach s
+    INNER JOIN @Details d ON s.MaSach = d.MaSach;
+
+    INSERT INTO CTHoaDon (MaHoaDon, MaSach, SoLuong, GiaBan)
+    SELECT @MaHoaDon, MaSach, SoLuong, GiaBan
+    FROM @Details;
+
+    -- Tính tổng tiền của hóa đơn
+    DECLARE @ThanhTien INT;
+    SELECT @ThanhTien = SUM(SoLuong * GiaBan) FROM @Details;
+
+    -- Cập nhật tổng tiền vào bảng HoaDon
+    UPDATE HoaDon
+    SET ThanhTien = @ThanhTien
+    WHERE MaHoaDon = @MaHoaDon;
+
+    COMMIT TRANSACTION;
+
+    SELECT @MaHoaDon AS MaHoaDon, N'Hóa đơn đã được tạo thành công.' AS Message;
+END TRY
+BEGIN CATCH
+    ROLLBACK TRANSACTION;
+    RAISERROR (ERROR_MESSAGE(), 16, 1);
+END CATCH;
+GO
+
+--Lấy danh sách hóa đơn
+CREATE PROC dbo.spGetAllHoaDon
+AS
+BEGIN TRY
+    SELECT 
+        h.MaHoaDon,
+        h.UserID,
+        u.Username,
+        h.OrderDate,
+        h.ThanhTien
+    FROM HoaDon h
+    INNER JOIN Users u ON h.UserID = u.UserID
+    ORDER BY h.OrderDate DESC;
+END TRY
+BEGIN CATCH
+    RAISERROR (ERROR_MESSAGE(), 16, 1);
+END CATCH;
+GO
+
+--Lấy chi tiết hóa đơn
+CREATE PROC dbo.spGetCTHoaDon
+    @MaHoaDon INT
+AS
+BEGIN TRY
+    -- Thông tin hóa đơn
+    SELECT 
+        h.MaHoaDon,
+        h.UserID,
+        u.Username,
+        h.OrderDate,
+        h.ThanhTien
+    FROM HoaDon h
+    INNER JOIN Users u ON h.UserID = u.UserID
+    WHERE h.MaHoaDon = @MaHoaDon;
+
+    -- Danh sách chi tiết hóa đơn
+    SELECT 
+        c.MaCTHoaDon,
+        c.MaSach,
+        s.TenSach,
+        c.SoLuong,
+        c.GiaBan,
+        (c.SoLuong * c.GiaBan) AS ThanhTien
+    FROM CTHoaDon c
+    INNER JOIN Sach s ON c.MaSach = s.MaSach
+    WHERE c.MaHoaDon = @MaHoaDon;
+END TRY
+BEGIN CATCH
+    RAISERROR (ERROR_MESSAGE(), 16, 1);
+END CATCH;
+GO
+
+
+CREATE TRIGGER trg_CheckSoLuongTon
+ON CTHoaDon
+AFTER INSERT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Kiểm tra số lượng tồn trước khi trừ
+    IF EXISTS (
+        SELECT 1 
+        FROM INSERTED i
+        INNER JOIN Sach s ON i.MaSach = s.MaSach
+        WHERE i.SoLuong > s.SoLuongTon
+    )
+    BEGIN
+        RAISERROR (N'Số lượng tồn không đủ để thêm chi tiết hóa đơn.', 16, 1);
+        ROLLBACK TRANSACTION; -- Hủy bỏ giao dịch
+        RETURN;
+    END;
+
+    -- Trừ số lượng tồn trong bảng Sach
+    UPDATE s
+    SET s.SoLuongTon = s.SoLuongTon - i.SoLuong
+    FROM Sach s
+    INNER JOIN INSERTED i ON s.MaSach = i.MaSach;
+
+    PRINT N'Số lượng tồn đã được cập nhật thành công.';
+END;
+GO
+
+CREATE TRIGGER trg_CalculateThanhTien
+ON CTHoaDon
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Tạo một bảng tạm lưu các MaHoaDon bị ảnh hưởng
+    DECLARE @AffectedHoaDon TABLE (MaHoaDon INT);
+
+    -- Thêm MaHoaDon từ bảng INSERTED
+    IF EXISTS (SELECT 1 FROM INSERTED)
+    BEGIN
+        INSERT INTO @AffectedHoaDon (MaHoaDon)
+        SELECT DISTINCT MaHoaDon FROM INSERTED;
+    END
+
+    -- Thêm MaHoaDon từ bảng DELETED
+    IF EXISTS (SELECT 1 FROM DELETED)
+    BEGIN
+        INSERT INTO @AffectedHoaDon (MaHoaDon)
+        SELECT DISTINCT MaHoaDon FROM DELETED;
+    END
+
+    -- Cập nhật lại ThanhTien trong bảng HoaDon
+    UPDATE h
+    SET h.ThanhTien = ISNULL(c.TotalAmount, 0)
+    FROM HoaDon h
+    INNER JOIN (
+        SELECT MaHoaDon, SUM(SoLuong * GiaBan) AS TotalAmount
+        FROM CTHoaDon
+        WHERE MaHoaDon IN (SELECT MaHoaDon FROM @AffectedHoaDon)
+        GROUP BY MaHoaDon
+    ) c ON h.MaHoaDon = c.MaHoaDon;
+
+    -- Đặt ThanhTien = 0 cho các hóa đơn không còn chi tiết nào
+    UPDATE h
+    SET h.ThanhTien = 0
+    FROM HoaDon h
+    WHERE NOT EXISTS (
+        SELECT 1 
+        FROM CTHoaDon c 
+        WHERE c.MaHoaDon = h.MaHoaDon
+    );
+END;
 GO
 
 
