@@ -505,15 +505,14 @@ BEGIN TRY
     -- Bảng tạm để lưu chi tiết hóa đơn từ JSON
     DECLARE @Details TABLE (
         MaSach INT,
-        SoLuong INT,
-        GiaBan INT
+        SoLuong INT
     );
-    -- Parse JSON vào bảng tạm
-    INSERT INTO @Details (MaSach, SoLuong, GiaBan)
+
+    -- Parse JSON vào bảng tạm (lấy MaSach và SoLuong từ đầu vào)
+    INSERT INTO @Details (MaSach, SoLuong)
     SELECT 
         JSON_VALUE(d.value, '$.MaSach') AS MaSach,
-        JSON_VALUE(d.value, '$.SoLuong') AS SoLuong,
-        JSON_VALUE(d.value, '$.GiaBan') AS GiaBan
+        JSON_VALUE(d.value, '$.SoLuong') AS SoLuong
     FROM OPENJSON(@OrderDetails) AS d;
 
     -- Kiểm tra số lượng tồn của từng sách
@@ -529,19 +528,27 @@ BEGIN TRY
         RETURN;
     END;
 
-    -- Trừ số lượng tồn và thêm chi tiết hóa đơn
+    -- Trừ số lượng tồn trong bảng Sach và thêm chi tiết hóa đơn
+    INSERT INTO CTHoaDon (MaHoaDon, MaSach, SoLuong, GiaBan)
+    SELECT 
+        @MaHoaDon, 
+        d.MaSach, 
+        d.SoLuong, 
+        s.GiaBan -- Lấy giá bán từ bảng Sach
+    FROM @Details d
+    INNER JOIN Sach s ON d.MaSach = s.MaSach;
+
+    -- Cập nhật số lượng tồn trong bảng Sach
     UPDATE s
     SET s.SoLuongTon = s.SoLuongTon - d.SoLuong
     FROM Sach s
     INNER JOIN @Details d ON s.MaSach = d.MaSach;
 
-    INSERT INTO CTHoaDon (MaHoaDon, MaSach, SoLuong, GiaBan)
-    SELECT @MaHoaDon, MaSach, SoLuong, GiaBan
-    FROM @Details;
-
     -- Tính tổng tiền của hóa đơn
     DECLARE @ThanhTien INT;
-    SELECT @ThanhTien = SUM(SoLuong * GiaBan) FROM @Details;
+    SELECT @ThanhTien = SUM(SoLuong * GiaBan)
+    FROM CTHoaDon
+    WHERE MaHoaDon = @MaHoaDon;
 
     -- Cập nhật tổng tiền vào bảng HoaDon
     UPDATE HoaDon
@@ -554,7 +561,8 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
     ROLLBACK TRANSACTION;
-    RAISERROR (ERROR_MESSAGE(), 16, 1);
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
 END CATCH;
 GO
 
@@ -573,7 +581,8 @@ BEGIN TRY
     ORDER BY h.OrderDate DESC;
 END TRY
 BEGIN CATCH
-    RAISERROR (ERROR_MESSAGE(), 16, 1);
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
 END CATCH;
 GO
 
@@ -582,17 +591,6 @@ CREATE PROC dbo.spGetCTHoaDon
     @MaHoaDon INT
 AS
 BEGIN TRY
-    -- Thông tin hóa đơn
-    SELECT 
-        h.MaHoaDon,
-        h.UserID,
-        u.Username,
-        h.OrderDate,
-        h.ThanhTien
-    FROM HoaDon h
-    INNER JOIN Users u ON h.UserID = u.UserID
-    WHERE h.MaHoaDon = @MaHoaDon;
-
     -- Danh sách chi tiết hóa đơn
     SELECT 
         c.MaCTHoaDon,
@@ -606,10 +604,10 @@ BEGIN TRY
     WHERE c.MaHoaDon = @MaHoaDon;
 END TRY
 BEGIN CATCH
-    RAISERROR (ERROR_MESSAGE(), 16, 1);
+    DECLARE @ErrorMessage NVARCHAR(1000) = ERROR_MESSAGE();
+    RAISERROR (@ErrorMessage, 16, 1);
 END CATCH;
 GO
-
 
 CREATE TRIGGER trg_CheckSoLuongTon
 ON CTHoaDon
@@ -888,3 +886,26 @@ VALUES
     (N'Sách điện tử'),
     (N'Sách nói (Audio Book)');
 go
+
+INSERT INTO Sach (TenSach, MaTacGia, MaTheLoai, GiaBan, SoLuongTon, MoTa, AnhBia, IsActive)
+VALUES
+(N'Harry Potter và Hòn Đá Phù Thủy', 1, 1, 150000, 50, N'Phần đầu tiên trong bộ truyện Harry Potter nổi tiếng.', 'https://example.com/harry1.jpg', 1),
+(N'Harry Potter và Phòng Chứa Bí Mật', 1, 1, 160000, 45, N'Phần hai của bộ truyện Harry Potter.', 'https://example.com/harry2.jpg', 1),
+(N'Harry Potter và Tên Tù Nhân Ngục Azkaban', 1, 1, 170000, 40, N'Phần ba của bộ truyện Harry Potter.', 'https://example.com/harry3.jpg', 1),
+(N'Chạng Vạng', 2, 2, 120000, 60, N'Tiểu thuyết lãng mạn giả tưởng về ma cà rồng.', 'https://example.com/twilight.jpg', 1),
+(N'Đại Gia Gatsby', 3, 3, 100000, 30, N'Tiểu thuyết kinh điển của nhà văn F. Scott Fitzgerald.', 'https://example.com/gatsby.jpg', 1),
+(N'Cuộc Phiêu Lưu Của Sherlock Holmes', 4, 4, 130000, 35, N'Tuyển tập truyện trinh thám nổi tiếng của Conan Doyle.', 'https://example.com/sherlock.jpg', 1),
+(N'Đồi Gió Hú', 5, 2, 110000, 25, N'Tiểu thuyết lãng mạn nổi tiếng của Emily Brontë.', 'https://example.com/wuthering.jpg', 1),
+(N'Tội Ác Và Hình Phạt', 6, 5, 180000, 20, N'Tác phẩm văn học kinh điển của Fyodor Dostoevsky.', 'https://example.com/crime.jpg', 1),
+(N'Nhà Giả Kim', 7, 6, 90000, 70, N'Tiểu thuyết triết lý đầy cảm hứng của Paulo Coelho.', 'https://example.com/alchemist.jpg', 1),
+(N'Bí Kíp Luyện Rồng', 8, 7, 95000, 80, N'Truyện thiếu nhi phiêu lưu hấp dẫn.', 'https://example.com/dragon.jpg', 1),
+(N'Hoàng Tử Bé', 9, 6, 85000, 90, N'Tác phẩm nổi tiếng mang thông điệp sâu sắc.', 'https://example.com/littleprince.jpg', 1),
+(N'1984', 10, 8, 140000, 55, N'Tiểu thuyết phản địa đàng của George Orwell.', 'https://example.com/1984.jpg', 1),
+(N'Truyện Kiều', 11, 9, 70000, 65, N'Tác phẩm thơ nổi tiếng của Nguyễn Du.', 'https://example.com/kieu.jpg', 1),
+(N'Dế Mèn Phiêu Lưu Ký', 12, 7, 80000, 85, N'Truyện thiếu nhi kinh điển của Tô Hoài.', 'https://example.com/demen.jpg', 1),
+(N'Bố Già', 13, 3, 200000, 20, N'Tiểu thuyết về thế giới mafia của Mario Puzo.', 'https://example.com/godfather.jpg', 1),
+(N'Người Đua Diều', 14, 4, 125000, 45, N'Tác phẩm cảm động về tình bạn và tình yêu.', 'https://example.com/kiterunner.jpg', 1),
+(N'Đắc Nhân Tâm', 15, 10, 105000, 100, N'Cuốn sách về nghệ thuật giao tiếp và thành công.', 'https://example.com/dacnhantam.jpg', 1),
+(N'Thiên Thần Và Ác Quỷ', 16, 4, 155000, 60, N'Tiểu thuyết trinh thám nổi tiếng của Dan Brown.', 'https://example.com/angels.jpg', 1),
+(N'Mật Mã Da Vinci', 16, 4, 165000, 50, N'Tiểu thuyết bí ẩn nổi tiếng của Dan Brown.', 'https://example.com/davinci.jpg', 1),
+(N'Bảy Thói Quen Của Người Thành Đạt', 17, 10, 115000, 75, N'Cuốn sách phát triển bản thân nổi tiếng.', 'https://example.com/7habits.jpg', 1);
